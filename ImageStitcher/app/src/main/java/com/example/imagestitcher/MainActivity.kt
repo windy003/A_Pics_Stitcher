@@ -370,30 +370,47 @@ class MainActivity : AppCompatActivity() {
             val deletedCount = withContext(Dispatchers.IO) {
                 var count = 0
 
+                Log.d("MainActivity", "准备删除 ${images.size} 张图片")
+
                 // 将文档URI转换为媒体URI
                 val mediaUris = images.mapNotNull { item ->
-                    convertToMediaUri(item.uri)
+                    Log.d("MainActivity", "处理图片 URI: ${item.uri}")
+                    val mediaUri = convertToMediaUri(item.uri)
+                    if (mediaUri == null) {
+                        Log.e("MainActivity", "无法转换 URI: ${item.uri}")
+                    }
+                    mediaUri
                 }
+
+                Log.d("MainActivity", "成功转换 ${mediaUris.size}/${images.size} 个 URI")
 
                 if (mediaUris.isNotEmpty() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     // Android 11+ 需要请求用户确认删除
                     try {
+                        Log.d("MainActivity", "Android 11+: 使用 MediaStore.createDeleteRequest")
                         val pendingIntent = MediaStore.createDeleteRequest(
                             contentResolver,
                             mediaUris
                         )
                         // 启动系统删除确认对话框
-                        deleteImagesLauncher.launch(
-                            IntentSenderRequest.Builder(pendingIntent.intentSender).build()
-                        )
+                        Log.d("MainActivity", "启动系统删除确认对话框")
+                        withContext(Dispatchers.Main) {
+                            deleteImagesLauncher.launch(
+                                IntentSenderRequest.Builder(pendingIntent.intentSender).build()
+                            )
+                        }
                         // 注意：实际删除数量将在回调中处理
                         return@withContext -1 // 特殊标记表示使用了系统对话框
                     } catch (e: Exception) {
                         Log.e("MainActivity", "请求删除权限失败", e)
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(this@MainActivity, "删除请求失败: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
                     }
                 }
 
                 // Android 10及以下，或者Android 11+失败后，尝试直接删除
+                Log.d("MainActivity", "Android 10及以下，或创建删除请求失败，尝试直接删除")
                 images.forEach { item ->
                     try {
                         val mediaUri = convertToMediaUri(item.uri)
@@ -403,7 +420,7 @@ class MainActivity : AppCompatActivity() {
                                 count++
                                 Log.d("MainActivity", "已删除图片: $mediaUri")
                             } else {
-                                Log.w("MainActivity", "无法删除图片: $mediaUri")
+                                Log.w("MainActivity", "无法删除图片 (返回0): $mediaUri")
                             }
                         } else {
                             Log.w("MainActivity", "无法转换URI: ${item.uri}")
@@ -412,6 +429,7 @@ class MainActivity : AppCompatActivity() {
                         Log.e("MainActivity", "删除图片失败: ${item.uri}", e)
                     }
                 }
+                Log.d("MainActivity", "直接删除完成，删除数量: $count")
                 count
             }
 
@@ -438,24 +456,87 @@ class MainActivity : AppCompatActivity() {
 
     private fun convertToMediaUri(uri: Uri): Uri? {
         return try {
+            Log.d("MainActivity", "转换URI: $uri, authority: ${uri.authority}, scheme: ${uri.scheme}")
+            val uriPath = uri.path ?: ""
+
+            // 处理 Android 13+ Photo Picker URI
+            // 格式: content://media/picker_get_content/0/com.android.providers.media.photopicker/media/1000023734
+            if (uri.authority == "media" && uriPath.contains("picker_get_content")) {
+                try {
+                    // 提取最后的媒体ID
+                    val mediaId = uriPath.substringAfterLast("/").toLongOrNull()
+                    if (mediaId != null) {
+                        val mediaUri = ContentUris.withAppendedId(
+                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                            mediaId
+                        )
+                        Log.d("MainActivity", "Photo Picker URI 转换成功: $mediaUri")
+                        return mediaUri
+                    } else {
+                        Log.w("MainActivity", "无法从 Photo Picker URI 提取媒体ID: $uriPath")
+                    }
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "Photo Picker URI 转换失败", e)
+                }
+            }
+
             // 如果是文档URI，转换为媒体URI
             if (uri.authority == "com.android.providers.media.documents") {
-                val docId = android.provider.DocumentsContract.getDocumentId(uri)
+                val docId = DocumentsContract.getDocumentId(uri)
                 val split = docId.split(":")
-                val type = split[0]
-                val id = split[1]
+                if (split.size >= 2) {
+                    val type = split[0]
+                    val id = split[1]
 
-                when (type) {
-                    "image" -> android.content.ContentUris.withAppendedId(
-                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                        id.toLong()
-                    )
-                    else -> null
+                    Log.d("MainActivity", "文档URI - type: $type, id: $id")
+
+                    when (type) {
+                        "image" -> {
+                            val mediaUri = ContentUris.withAppendedId(
+                                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                                id.toLong()
+                            )
+                            Log.d("MainActivity", "文档URI转换成功: $mediaUri")
+                            mediaUri
+                        }
+                        else -> {
+                            Log.w("MainActivity", "不支持的文档类型: $type")
+                            null
+                        }
+                    }
+                } else {
+                    Log.w("MainActivity", "文档ID格式错误: $docId")
+                    null
                 }
-            } else if (uri.authority == "media") {
-                // 已经是媒体URI
+            } else if (uri.authority?.contains("media") == true && uriPath.contains("/external/images/media/")) {
+                // 已经是标准媒体URI
+                Log.d("MainActivity", "已经是标准媒体URI: $uri")
                 uri
+            } else if (uri.scheme == "content") {
+                // 尝试查询媒体库获取真实的媒体URI
+                try {
+                    val projection = arrayOf(MediaStore.Images.Media._ID)
+                    contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+                        if (cursor.moveToFirst()) {
+                            val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+                            val id = cursor.getLong(idColumn)
+                            val mediaUri = ContentUris.withAppendedId(
+                                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                                id
+                            )
+                            Log.d("MainActivity", "通过查询获取到媒体URI: $mediaUri")
+                            mediaUri
+                        } else {
+                            Log.w("MainActivity", "查询结果为空")
+                            null
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "通过查询获取媒体URI失败", e)
+                    null
+                }
             } else {
+                Log.w("MainActivity", "不支持的URI类型: $uri")
                 null
             }
         } catch (e: Exception) {
