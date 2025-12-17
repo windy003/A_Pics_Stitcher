@@ -128,7 +128,7 @@ class MainActivity : AppCompatActivity() {
         binding.progressBar.visibility = android.view.View.VISIBLE
         scope.launch {
             val newImages = withContext(Dispatchers.IO) {
-                uris.reversed().mapNotNull { uri ->
+                uris.mapNotNull { uri ->
                     Log.d("MainActivity", "加载图片: $uri")
                     val bitmap = BitmapUtils.loadBitmapFromUri(this@MainActivity, uri)
                     if (bitmap == null) {

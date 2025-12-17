@@ -27,6 +27,7 @@ class ImagePickerActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_SELECTED_URIS = "selected_uris"
         private const val REQUEST_PERMISSION = 100
+        private const val REQUEST_IMAGE_VIEWER = 101
         private const val TAG = "ImagePickerActivity"
     }
 
@@ -59,9 +60,15 @@ class ImagePickerActivity : AppCompatActivity() {
         rvGallery.layoutManager = GridLayoutManager(this, 3)
 
         // 初始化Adapter
-        adapter = ImagePickerAdapter(images) {
-            updateSelectedCount()
-        }
+        adapter = ImagePickerAdapter(
+            images = images,
+            onSelectionChanged = {
+                updateSelectedCount()
+            },
+            onZoomClick = { position ->
+                openImageViewer(position)
+            }
+        )
         rvGallery.adapter = adapter
 
         // 确定按钮
@@ -70,6 +77,11 @@ class ImagePickerActivity : AppCompatActivity() {
             if (selectedImages.isEmpty()) {
                 Toast.makeText(this, "请至少选择一张图片", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
+            }
+
+            // 打印选择顺序日志
+            selectedImages.forEachIndexed { index, image ->
+                Log.d(TAG, "选择顺序 #${index + 1}: ${image.displayName}, selectionOrder=${image.selectionOrder}")
             }
 
             // 返回选中的URI列表
@@ -195,6 +207,47 @@ class ImagePickerActivity : AppCompatActivity() {
     private fun updateSelectedCount() {
         val count = adapter.getSelectedImages().size
         tvSelectedCount.text = "已选 $count 张"
+    }
+
+    private fun openImageViewer(position: Int) {
+        val intent = Intent(this, ImageViewerActivity::class.java).apply {
+            putParcelableArrayListExtra(ImageViewerActivity.EXTRA_IMAGES, ArrayList(images))
+            putExtra(ImageViewerActivity.EXTRA_POSITION, position)
+        }
+        @Suppress("DEPRECATION")
+        startActivityForResult(intent, REQUEST_IMAGE_VIEWER)
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == REQUEST_IMAGE_VIEWER && resultCode == RESULT_OK && data != null) {
+            val position = data.getIntExtra(ImageViewerActivity.EXTRA_SELECT_FROM_POSITION, -1)
+            val includeCurrent = data.getBooleanExtra(ImageViewerActivity.EXTRA_INCLUDE_CURRENT, false)
+
+            if (position >= 0) {
+                // 选择从位置0到position的图片
+                val startPosition = 0
+                val endPosition = if (includeCurrent) position else position - 1
+
+                // 收集选中的图片URI
+                val selectedUris = ArrayList<String>()
+                for (i in startPosition..endPosition) {
+                    if (i < images.size) {
+                        selectedUris.add(images[i].uri.toString())
+                    }
+                }
+
+                // 直接返回选中的URI列表，不返回选择界面
+                val resultIntent = Intent().apply {
+                    putStringArrayListExtra(EXTRA_SELECTED_URIS, selectedUris)
+                }
+                setResult(RESULT_OK, resultIntent)
+                finish()
+            }
+        }
     }
 
     override fun onDestroy() {

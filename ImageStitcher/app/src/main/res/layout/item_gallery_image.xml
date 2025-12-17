@@ -52,6 +52,20 @@
             android:background="#80673AB7"
             android:visibility="gone" />
 
+        <!-- 放大按钮 -->
+        <ImageView
+            android:id="@+id/btnZoom"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="top|start"
+            android:layout_margin="4dp"
+            android:background="#80000000"
+            android:padding="6dp"
+            android:src="@android:drawable/ic_menu_zoom"
+            android:contentDescription="放大查看"
+            android:clickable="true"
+            android:focusable="true" />
+
         <CheckBox
             android:id="@+id/cbSelected"
             android:layout_width="wrap_content"

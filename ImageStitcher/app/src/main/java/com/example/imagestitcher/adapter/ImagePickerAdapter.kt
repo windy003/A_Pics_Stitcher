@@ -1,5 +1,6 @@
 package com.example.imagestitcher.adapter
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -16,11 +17,19 @@ import java.util.Locale
 
 class ImagePickerAdapter(
     private val images: List<GalleryImage>,
-    private val onSelectionChanged: () -> Unit
+    private val onSelectionChanged: () -> Unit,
+    private val onZoomClick: (Int) -> Unit
 ) : RecyclerView.Adapter<ImagePickerAdapter.ViewHolder>() {
+
+    companion object {
+        private const val TAG = "ImagePickerAdapter"
+    }
 
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     private val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+
+    // 用于跟踪选择顺序的计数器
+    private var selectionCounter = 1
 
     inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val ivThumbnail: ImageView = view.findViewById(R.id.ivThumbnail)
@@ -28,6 +37,7 @@ class ImagePickerAdapter(
         val tvTime: TextView = view.findViewById(R.id.tvTime)
         val cbSelected: CheckBox = view.findViewById(R.id.cbSelected)
         val vSelectedOverlay: View = view.findViewById(R.id.vSelectedOverlay)
+        val btnZoom: ImageView = view.findViewById(R.id.btnZoom)
 
         init {
             // 点击整个项目切换选中状态
@@ -35,9 +45,29 @@ class ImagePickerAdapter(
                 val position = bindingAdapterPosition
                 if (position != RecyclerView.NO_POSITION) {
                     val image = images[position]
-                    image.isSelected = !image.isSelected
+                    if (image.isSelected) {
+                        // 取消选中：重置选择顺序
+                        Log.d(TAG, "取消选中: ${image.displayName}, 之前的selectionOrder=${image.selectionOrder}")
+                        image.isSelected = false
+                        image.selectionOrder = 0
+                        // 重新调整其他已选中图片的顺序
+                        reorderSelection()
+                    } else {
+                        // 选中：设置选择顺序
+                        image.isSelected = true
+                        image.selectionOrder = selectionCounter++
+                        Log.d(TAG, "选中: ${image.displayName}, selectionOrder=${image.selectionOrder}")
+                    }
                     notifyItemChanged(position)
                     onSelectionChanged()
+                }
+            }
+
+            // 点击放大按钮打开全屏查看
+            btnZoom.setOnClickListener {
+                val position = bindingAdapterPosition
+                if (position != RecyclerView.NO_POSITION) {
+                    onZoomClick(position)
                 }
             }
         }
@@ -96,9 +126,24 @@ class ImagePickerAdapter(
     override fun getItemCount(): Int = images.size
 
     /**
-     * 获取所有选中的图片
+     * 重新调整选择顺序，确保顺序连续
+     */
+    private fun reorderSelection() {
+        val selectedImages = images.filter { it.isSelected }
+            .sortedBy { it.selectionOrder }
+
+        selectedImages.forEachIndexed { index, image ->
+            image.selectionOrder = index + 1
+        }
+
+        selectionCounter = selectedImages.size + 1
+    }
+
+    /**
+     * 获取所有选中的图片，按选择顺序排序（第一个选中的在最前面）
      */
     fun getSelectedImages(): List<GalleryImage> {
         return images.filter { it.isSelected }
+            .sortedBy { it.selectionOrder }
     }
 }

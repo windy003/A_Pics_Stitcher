@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <!-- ViewPager2用于左右滑动切换图片 -->
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/viewPager"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- 关闭按钮 -->
+    <ImageView
+        android:id="@+id/btnClose"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="top|end"
+        android:layout_margin="16dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:padding="12dp"
+        android:src="@android:drawable/ic_menu_close_clear_cancel"
+        android:contentDescription="关闭"
+        android:clickable="true"
+        android:focusable="true"
+        android:tint="@android:color/white" />
+
+    <!-- 图片计数 -->
+    <TextView
+        android:id="@+id/tvImageCount"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="100dp"
+        android:background="#CC000000"
+        android:padding="8dp"
+        android:text="1 / 10"
+        android:textColor="@android:color/white"
+        android:textSize="14sp" />
+
+    <!-- 按钮容器 -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="30dp"
+        android:orientation="horizontal">
+
+        <!-- "前前"按钮：选择当前图片之前的（不包括当前） -->
+        <Button
+            android:id="@+id/btnSelectBefore"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:backgroundTint="#CC4CAF50"
+            android:text="前前"
+            android:textColor="@android:color/white"
+            android:textSize="16sp" />
+
+        <!-- "这前"按钮：选择包括当前图片及之前的 -->
+        <Button
+            android:id="@+id/btnSelectIncludingCurrent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#CC2196F3"
+            android:text="这前"
+            android:textColor="@android:color/white"
+            android:textSize="16sp" />
+    </LinearLayout>
+</FrameLayout>
