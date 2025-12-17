@@ -2,6 +2,7 @@ package com.example.imagestitcher
 
 import android.Manifest
 import android.content.ContentUris
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -34,12 +35,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: ImageStitchAdapter
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
-    private val pickImages = registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
-        Log.d("MainActivity", "选择了 ${uris.size} 张图片")
-        if (uris.isNotEmpty()) {
-            loadImages(uris)
-        } else {
-            Toast.makeText(this, "未选择任何图片", Toast.LENGTH_SHORT).show()
+    private val pickImages = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val uriStrings = result.data?.getStringArrayListExtra(ImagePickerActivity.EXTRA_SELECTED_URIS)
+            if (uriStrings != null && uriStrings.isNotEmpty()) {
+                val uris = uriStrings.map { Uri.parse(it) }
+                Log.d("MainActivity", "选择了 ${uris.size} 张图片")
+                loadImages(uris)
+            } else {
+                Toast.makeText(this, "未选择任何图片", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -87,7 +92,8 @@ class MainActivity : AppCompatActivity() {
     private fun setupButtons() {
         // 导入图片
         binding.btnImport.setOnClickListener {
-            pickImages.launch("image/*")
+            val intent = Intent(this, ImagePickerActivity::class.java)
+            pickImages.launch(intent)
         }
 
         // 切换方向
