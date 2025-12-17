@@ -128,7 +128,8 @@ class MainActivity : AppCompatActivity() {
         binding.progressBar.visibility = android.view.View.VISIBLE
         scope.launch {
             val newImages = withContext(Dispatchers.IO) {
-                uris.mapNotNull { uri ->
+                // 反转顺序，使第一个选中的图片显示在最后面
+                uris.reversed().mapNotNull { uri ->
                     Log.d("MainActivity", "加载图片: $uri")
                     val bitmap = BitmapUtils.loadBitmapFromUri(this@MainActivity, uri)
                     if (bitmap == null) {
