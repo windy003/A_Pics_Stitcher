@@ -185,28 +185,40 @@ class CropImageView @JvmOverloads constructor(
     }
 
     private fun findTouchedSlider(x: Float, y: Float): Slider? {
-        val touchRadius = sliderSize
+        // 只允许在滑块中心区域触摸，不允许在边界触摸
+        // 使用 sliderWidth 作为触摸半径，而不是 sliderSize
+        val touchRadius = sliderWidth
 
         when (orientation) {
             Orientation.VERTICAL -> {
                 val startY = height * cropStart
                 val endY = height * cropEnd
+                val centerX = width / 2
 
-                if (Math.abs(y - startY) < touchRadius) {
+                // 检查上滑块：只有在滑块中心区域内才响应
+                if (Math.abs(x - centerX) <= touchRadius &&
+                    Math.abs(y - startY) <= touchRadius) {
                     return Slider.START
                 }
-                if (Math.abs(y - endY) < touchRadius) {
+                // 检查下滑块：只有在滑块中心区域内才响应
+                if (Math.abs(x - centerX) <= touchRadius &&
+                    Math.abs(y - endY) <= touchRadius) {
                     return Slider.END
                 }
             }
             Orientation.HORIZONTAL -> {
                 val startX = width * cropStart
                 val endX = width * cropEnd
+                val centerY = height / 2
 
-                if (Math.abs(x - startX) < touchRadius) {
+                // 检查左滑块：只有在滑块中心区域内才响应
+                if (Math.abs(x - startX) <= touchRadius &&
+                    Math.abs(y - centerY) <= touchRadius) {
                     return Slider.START
                 }
-                if (Math.abs(x - endX) < touchRadius) {
+                // 检查右滑块：只有在滑块中心区域内才响应
+                if (Math.abs(x - endX) <= touchRadius &&
+                    Math.abs(y - centerY) <= touchRadius) {
                     return Slider.END
                 }
             }

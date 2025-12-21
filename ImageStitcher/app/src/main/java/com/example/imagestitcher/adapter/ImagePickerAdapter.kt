@@ -40,25 +40,31 @@ class ImagePickerAdapter(
         val btnZoom: ImageView = view.findViewById(R.id.btnZoom)
 
         init {
-            // 点击整个项目切换选中状态
+            // 点击整个项目自动选择从第0张到当前位置的所有图片
             view.setOnClickListener {
                 val position = bindingAdapterPosition
                 if (position != RecyclerView.NO_POSITION) {
-                    val image = images[position]
-                    if (image.isSelected) {
-                        // 取消选中：重置选择顺序
-                        Log.d(TAG, "取消选中: ${image.displayName}, 之前的selectionOrder=${image.selectionOrder}")
-                        image.isSelected = false
-                        image.selectionOrder = 0
-                        // 重新调整其他已选中图片的顺序
-                        reorderSelection()
-                    } else {
-                        // 选中：设置选择顺序
-                        image.isSelected = true
-                        image.selectionOrder = selectionCounter++
-                        Log.d(TAG, "选中: ${image.displayName}, selectionOrder=${image.selectionOrder}")
+                    // 清除所有之前的选择
+                    images.forEach {
+                        it.isSelected = false
+                        it.selectionOrder = 0
                     }
-                    notifyItemChanged(position)
+
+                    // 选择从第0张到当前点击位置的所有图片
+                    for (i in 0..position) {
+                        val img = images[i]
+                        img.isSelected = true
+                        img.selectionOrder = i + 1  // 按位置顺序分配order
+                        Log.d(TAG, "自动选中: 位置$i, ${img.displayName}, selectionOrder=${img.selectionOrder}")
+                    }
+
+                    // 重置计数器
+                    selectionCounter = position + 2
+
+                    Log.d(TAG, "点击位置$position，自动选择了 ${position + 1} 张图片")
+
+                    // 刷新所有项目的显示状态
+                    notifyDataSetChanged()
                     onSelectionChanged()
                 }
             }
