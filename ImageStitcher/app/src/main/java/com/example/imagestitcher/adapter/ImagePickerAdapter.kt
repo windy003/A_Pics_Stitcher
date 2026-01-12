@@ -131,19 +131,6 @@ class ImagePickerAdapter(
 
     override fun getItemCount(): Int = images.size
 
-    /**
-     * 重新调整选择顺序，确保顺序连续
-     */
-    private fun reorderSelection() {
-        val selectedImages = images.filter { it.isSelected }
-            .sortedBy { it.selectionOrder }
-
-        selectedImages.forEachIndexed { index, image ->
-            image.selectionOrder = index + 1
-        }
-
-        selectionCounter = selectedImages.size + 1
-    }
 
     /**
      * 获取所有选中的图片，按选择顺序排序（第一个选中的在最前面）
