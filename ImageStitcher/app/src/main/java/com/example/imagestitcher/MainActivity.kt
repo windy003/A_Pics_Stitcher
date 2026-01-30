@@ -76,6 +76,10 @@ class MainActivity : AppCompatActivity() {
         setupRecyclerView()
         setupButtons()
         updateUI()
+
+        // 自动打开图片选择器
+        val intent = Intent(this, ImagePickerActivity::class.java)
+        pickImages.launch(intent)
     }
 
     private fun setupRecyclerView() {
